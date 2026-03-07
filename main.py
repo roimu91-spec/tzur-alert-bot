@@ -11,12 +11,10 @@ CITY_NAME = "צור יצחק"
 last_alert_id = None
 
 
-# פקודת בדיקה
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ הבוט פעיל ועובד.")
 
 
-# בדיקת אזעקות
 async def check_alerts(app):
     global last_alert_id
 
@@ -55,9 +53,7 @@ async def check_alerts(app):
                                 text="🚨 אזעקה בצור יצחק!\n\n"
                                      "הנחיות פיקוד העורף:\n"
                                      "• להיכנס מיד למרחב מוגן\n"
-                                     "• לסגור דלת וחלון\n"
-                                     "• להישאר במרחב המוגן לפחות 10 דקות\n"
-                                     "• להמתין להודעה על חזרה לשגרה"
+                                     "• להישאר במרחב המוגן לפחות 10 דקות"
                             )
 
                         last_alert_id = alert_id
@@ -68,19 +64,19 @@ async def check_alerts(app):
         await asyncio.sleep(2)
 
 
-async def main():
-    app = ApplicationBuilder().token(TOKEN).build()
-
-    # פקודת בדיקה
-    app.add_handler(CommandHandler("status", status))
-
-    # התחלת בדיקת אזעקות ברקע
+async def post_init(app):
     asyncio.create_task(check_alerts(app))
 
-    print("Bot started...")
 
-    await app.run_polling()
+def main():
+    app = ApplicationBuilder().token(TOKEN).post_init(post_init).build()
+
+    app.add_handler(CommandHandler("status", status))
+
+    print("Bot started")
+
+    app.run_polling()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
