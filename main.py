@@ -1,7 +1,7 @@
 import requests
-import time
 import os
-from telegram import Update, Bot
+import asyncio
+from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 TOKEN = os.environ["TOKEN"]
@@ -11,10 +11,12 @@ CITY_NAME = "צור יצחק"
 last_alert_id = None
 
 
+# פקודת בדיקה
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ הבוט פעיל ועובד.")
 
 
+# בדיקת אזעקות
 async def check_alerts(app):
     global last_alert_id
 
@@ -43,14 +45,11 @@ async def check_alerts(app):
                     if CITY_NAME in cities and alert_id != last_alert_id:
 
                         if "חזרה לשגרה" in title:
-
                             await app.bot.send_message(
                                 chat_id=CHAT_ID,
                                 text="✅ חזרה לשגרה בצור יצחק\nאפשר לצאת מהמרחב המוגן."
                             )
-
                         else:
-
                             await app.bot.send_message(
                                 chat_id=CHAT_ID,
                                 text="🚨 אזעקה בצור יצחק!\n\n"
@@ -69,15 +68,16 @@ async def check_alerts(app):
         await asyncio.sleep(2)
 
 
-import asyncio
-
-
 async def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
+    # פקודת בדיקה
     app.add_handler(CommandHandler("status", status))
 
+    # התחלת בדיקת אזעקות ברקע
     asyncio.create_task(check_alerts(app))
+
+    print("Bot started...")
 
     await app.run_polling()
 
