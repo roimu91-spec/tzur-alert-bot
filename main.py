@@ -6,6 +6,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 TOKEN = os.environ["TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
+
 CITY_NAME = "צור יצחק"
 
 last_alert_id = None
@@ -15,68 +16,87 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ הבוט פעיל ועובד.")
 
 
-async def check_alerts(app):
-    global last_alert_id
+def get_alerts():
 
     headers = {
         "User-Agent": "Mozilla/5.0",
-        "Referer": "https://www.oref.org.il/",
-        "X-Requested-With": "XMLHttpRequest"
+        "Referer": "https://www.oref.org.il/"
     }
 
-    while True:
+    sources = [
+        "https://www.oref.org.il/WarningMessages/alert/alerts.json",
+        "https://api.oref.org.il/alerts.json"
+    ]
+
+    for url in sources:
+
         try:
-            r = requests.get(
-                "https://www.oref.org.il/WarningMessages/alert/alerts.json",
-                headers=headers,
-                timeout=5
-            )
+            r = requests.get(url, headers=headers, timeout=5)
 
             if r.status_code == 200:
+
                 data = r.json()
 
-                if data and "data" in data and data["data"]:
-                    cities = data["data"]
-                    alert_id = data.get("id")
-                    title = data.get("title", "")
+                if isinstance(data, dict) and "data" in data:
+                    return data
 
-                    if CITY_NAME in cities and alert_id != last_alert_id:
+        except:
+            continue
 
-                        if "חזרה לשגרה" in title:
-                            await app.bot.send_message(
-                                chat_id=CHAT_ID,
-                                text="✅ חזרה לשגרה בצור יצחק\nאפשר לצאת מהמרחב המוגן."
-                            )
-                        else:
+    return None
+
+
+async def check_alerts(app):
+
+    global last_alert_id
+
+    while True:
+
+        try:
+
+            data = get_alerts()
+
+            if data:
+
+                cities = data.get("data", [])
+                alert_id = data.get("id")
+
+                if cities and alert_id != last_alert_id:
+
+                    for city in cities:
+
+                        if CITY_NAME in city:
+
                             await app.bot.send_message(
                                 chat_id=CHAT_ID,
                                 text="🚨 אזעקה בצור יצחק!\n\n"
                                      "הנחיות פיקוד העורף:\n"
                                      "• להיכנס מיד למרחב מוגן\n"
-                                     "• להישאר במרחב המוגן לפחות 10 דקות"
+                                     "• להישאר לפחות 10 דקות"
                             )
 
-                        last_alert_id = alert_id
+                            last_alert_id = alert_id
 
         except Exception as e:
+
             print("Error:", e)
 
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
 
 
-async def post_init(app):
-    asyncio.create_task(check_alerts(app))
+async def main():
 
-
-def main():
-    app = ApplicationBuilder().token(TOKEN).post_init(post_init).build()
+    app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("status", status))
 
+    asyncio.create_task(check_alerts(app))
+
     print("Bot started")
 
-    app.run_polling()
+    await app.run_polling()
 
 
 if __name__ == "__main__":
-    main()
+
+    asyncio.run(main())
