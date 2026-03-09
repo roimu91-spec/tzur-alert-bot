@@ -9,14 +9,18 @@ CHAT_ID = os.environ["CHAT_ID"]
 
 CITY_NAME = "צור יצחק"
 
-last_alert_id = None
+last_alert = None
 
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ הבוט פעיל ועובד.")
+    await update.message.reply_text("✅ הבוט פעיל.")
 
 
-def get_alerts():
+async def test(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🚨 בדיקת אזעקה בצור יצחק")
+
+
+def get_oref_alerts():
 
     headers = {
         "User-Agent": "Mozilla/5.0",
@@ -30,42 +34,67 @@ def get_alerts():
         r = requests.get(url, headers=headers, timeout=5)
 
         if r.status_code == 200:
+
+            data = r.json()
+
+            if "data" in data:
+                return data["data"]
+
+    except:
+        return []
+
+
+def get_redalert():
+
+    url = "https://api.tzevaadom.co.il/notifications"
+
+    try:
+
+        r = requests.get(url, timeout=5)
+
+        if r.status_code == 200:
             return r.json()
 
     except:
-        return None
+        return []
+
+    return []
 
 
 async def check_alerts(app):
 
-    global last_alert_id
+    global last_alert
 
     while True:
 
         try:
 
-            data = get_alerts()
+            cities = []
 
-            if data and "data" in data:
+            # פיקוד העורף
+            oref = get_oref_alerts()
 
-                cities = data["data"]
-                alert_id = data.get("id")
+            if oref:
+                cities.extend(oref)
 
-                if cities and alert_id != last_alert_id:
+            # red alert
+            red = get_redalert()
 
-                    for city in cities:
+            if red:
+                cities.extend(red)
 
-                        if CITY_NAME in city:
+            if cities:
 
-                            await app.bot.send_message(
-                                chat_id=CHAT_ID,
-                                text="🚨 אזעקה בצור יצחק!\n\n"
-                                     "הנחיות פיקוד העורף:\n"
-                                     "• להיכנס מיד למרחב מוגן\n"
-                                     "• להישאר לפחות 10 דקות"
-                            )
+                if CITY_NAME in str(cities) and cities != last_alert:
 
-                            last_alert_id = alert_id
+                    await app.bot.send_message(
+                        chat_id=CHAT_ID,
+                        text="🚨 אזעקה בצור יצחק!\n\n"
+                             "היכנס מיד למרחב מוגן\n"
+                             "הישאר לפחות 10 דקות"
+                    )
+
+                    last_alert = cities
 
         except Exception as e:
 
@@ -79,6 +108,7 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("status", status))
+    app.add_handler(CommandHandler("test", test))
 
     asyncio.get_event_loop().create_task(check_alerts(app))
 
