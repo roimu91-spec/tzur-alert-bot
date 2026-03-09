@@ -23,27 +23,17 @@ def get_alerts():
         "Referer": "https://www.oref.org.il/"
     }
 
-    sources = [
-        "https://www.oref.org.il/WarningMessages/alert/alerts.json",
-        "https://api.oref.org.il/alerts.json"
-    ]
+    url = "https://www.oref.org.il/WarningMessages/alert/alerts.json"
 
-    for url in sources:
+    try:
 
-        try:
-            r = requests.get(url, headers=headers, timeout=5)
+        r = requests.get(url, headers=headers, timeout=5)
 
-            if r.status_code == 200:
+        if r.status_code == 200:
+            return r.json()
 
-                data = r.json()
-
-                if isinstance(data, dict) and "data" in data:
-                    return data
-
-        except:
-            continue
-
-    return None
+    except:
+        return None
 
 
 async def check_alerts(app):
@@ -56,9 +46,9 @@ async def check_alerts(app):
 
             data = get_alerts()
 
-            if data:
+            if data and "data" in data:
 
-                cities = data.get("data", [])
+                cities = data["data"]
                 alert_id = data.get("id")
 
                 if cities and alert_id != last_alert_id:
@@ -84,19 +74,18 @@ async def check_alerts(app):
         await asyncio.sleep(1)
 
 
-async def main():
+def main():
 
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("status", status))
 
-    asyncio.create_task(check_alerts(app))
+    asyncio.get_event_loop().create_task(check_alerts(app))
 
     print("Bot started")
 
-    await app.run_polling()
+    app.run_polling()
 
 
 if __name__ == "__main__":
-
-    asyncio.run(main())
+    main()
