@@ -9,7 +9,7 @@ CHAT_ID = os.environ["CHAT_ID"]
 
 CITY_NAME = "צור יצחק"
 
-last_alert = None
+last_alert_id = None
 
 
 # פקודת סטטוס
@@ -25,13 +25,14 @@ async def test(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# בדיקת אזעקות
+# בדיקת אזעקות מפיקוד העורף
 async def check_alerts(app):
 
-    global last_alert
+    global last_alert_id
 
     headers = {
-        "User-Agent": "Mozilla/5.0"
+        "User-Agent": "Mozilla/5.0",
+        "Referer": "https://www.oref.org.il/"
     }
 
     while True:
@@ -53,18 +54,18 @@ async def check_alerts(app):
                     cities = data["data"]
                     alert_id = data.get("id")
 
-                    if CITY_NAME in cities and alert_id != last_alert:
+                    if CITY_NAME in cities and alert_id != last_alert_id:
 
                         await app.bot.send_message(
                             chat_id=CHAT_ID,
-                            text="🚨 אזעקה בצור יצחק!\n\nהיכנסו למרחב מוגן מיד!"
+                            text="🚨 אזעקה בצור יצחק!\n\nהיכנסו מיד למרחב מוגן!"
                         )
 
-                        last_alert = alert_id
+                        last_alert_id = alert_id
 
         except Exception as e:
 
-            print("Error:", e)
+            print("Alert error:", e)
 
         await asyncio.sleep(3)
 
@@ -83,7 +84,8 @@ async def main():
     await app.run_polling()
 
 
+# תיקון חשוב ל-Railway
 if __name__ == "__main__":
-
     import asyncio
-    asyncio.run(main())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
