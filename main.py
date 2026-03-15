@@ -12,12 +12,10 @@ CITY_NAME = "צור יצחק"
 last_alert_id = None
 
 
-# פקודת סטטוס
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ הבוט פעיל")
 
 
-# פקודת בדיקה
 async def test(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=CHAT_ID,
@@ -25,20 +23,15 @@ async def test(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# בדיקת אזעקות מפיקוד העורף
 async def check_alerts(app):
-
     global last_alert_id
 
     headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Referer": "https://www.oref.org.il/"
+        "User-Agent": "Mozilla/5.0"
     }
 
     while True:
-
         try:
-
             r = requests.get(
                 "https://www.oref.org.il/WarningMessages/alert/alerts.json",
                 headers=headers,
@@ -46,11 +39,9 @@ async def check_alerts(app):
             )
 
             if r.status_code == 200:
-
                 data = r.json()
 
                 if data and "data" in data and data["data"]:
-
                     cities = data["data"]
                     alert_id = data.get("id")
 
@@ -58,34 +49,33 @@ async def check_alerts(app):
 
                         await app.bot.send_message(
                             chat_id=CHAT_ID,
-                            text="🚨 אזעקה בצור יצחק!\n\nהיכנסו מיד למרחב מוגן!"
+                            text="🚨 אזעקה בצור יצחק!\nהיכנסו מיד למרחב מוגן!"
                         )
 
                         last_alert_id = alert_id
 
         except Exception as e:
-
             print("Alert error:", e)
 
         await asyncio.sleep(3)
 
 
-async def main():
+def main():
 
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("status", status))
     app.add_handler(CommandHandler("test", test))
 
-    asyncio.create_task(check_alerts(app))
+    async def start_tasks(app):
+        asyncio.create_task(check_alerts(app))
+
+    app.post_init = start_tasks
 
     print("Bot started")
 
-    await app.run_polling()
+    app.run_polling()
 
 
-# תיקון חשוב ל-Railway
 if __name__ == "__main__":
-    import asyncio
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    main()
