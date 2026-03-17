@@ -1,6 +1,6 @@
-import asyncio
 import requests
 import os
+import asyncio
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
@@ -24,7 +24,7 @@ async def test(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# ===== מקור 1 - פיקוד העורף =====
+# ===== מקורות =====
 
 def get_oref():
     try:
@@ -41,22 +41,17 @@ def get_oref():
         )
 
         if r.status_code == 200:
-            data = r.json()
-            return data.get("data", [])
-        return []
+            return r.json().get("data", [])
 
-    except Exception as e:
-        print("OREF ERROR:", e)
-        return []
+    except:
+        pass
 
+    return []
 
-# ===== מקור 2 - RedAlert =====
 
 def get_redalert():
     try:
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
+        headers = {"User-Agent": "Mozilla/5.0"}
 
         r = requests.get(
             "https://api.redalert.me/alerts.json",
@@ -67,14 +62,13 @@ def get_redalert():
         if r.status_code == 200:
             return r.json()
 
-        return []
+    except:
+        pass
 
-    except Exception as e:
-        print("RED ERROR:", e)
-        return []
+    return []
 
 
-# ===== בדיקה מרכזית =====
+# ===== בדיקה =====
 
 async def check_alerts(app):
     global last_alert
@@ -89,11 +83,9 @@ async def check_alerts(app):
 
             found = False
 
-            # פיקוד העורף
-            if isinstance(oref_data, list) and CITY_NAME in oref_data:
+            if CITY_NAME in oref_data:
                 found = True
 
-            # RedAlert (מוגן מקריסה)
             if red_data:
                 try:
                     for item in red_data:
@@ -102,7 +94,6 @@ async def check_alerts(app):
                 except:
                     pass
 
-            # שליחת אזעקה
             if found and last_alert != "alert":
                 await app.bot.send_message(
                     chat_id=CHAT_ID,
@@ -110,34 +101,24 @@ async def check_alerts(app):
                 )
                 last_alert = "alert"
 
-            # איפוס
             if not found:
                 last_alert = None
 
         except Exception as e:
-            print("MAIN ERROR:", e)
+            print("ERROR:", e)
 
         await asyncio.sleep(2)
 
 
-# ===== MAIN =====
+# ===== הפעלה =====
 
-async def main():
-    app = ApplicationBuilder().token(TOKEN).build()
+app = ApplicationBuilder().token(TOKEN).build()
 
-    app.add_handler(CommandHandler("status", status))
-    app.add_handler(CommandHandler("test", test))
+app.add_handler(CommandHandler("status", status))
+app.add_handler(CommandHandler("test", test))
 
-    asyncio.create_task(check_alerts(app))
+app.job_queue.run_once(lambda ctx: asyncio.create_task(check_alerts(app)), 0)
 
-    print("Bot started")
+print("Bot started")
 
-    await app.run_polling()
-
-
-# ===== הפעלה (מתוקן ל-Railway) =====
-
-if __name__ == "__main__":
-    import asyncio
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+app.run_polling()
