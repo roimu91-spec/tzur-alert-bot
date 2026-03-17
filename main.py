@@ -1,24 +1,25 @@
 import requests
 import os
-import asyncio
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+import time
+from telegram import Bot
+from telegram.ext import Updater, CommandHandler
 
 TOKEN = os.environ["TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
 CITY_NAME = "צור יצחק"
 
+bot = Bot(token=TOKEN)
 last_alert = None
 
 
 # ===== פקודות =====
 
-async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ הבוט פעיל")
+def status(update, context):
+    update.message.reply_text("✅ הבוט פעיל")
 
 
-async def test(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.send_message(
+def test(update, context):
+    bot.send_message(
         chat_id=CHAT_ID,
         text="🚨 בדיקת אזעקה (test)"
     )
@@ -42,6 +43,7 @@ def get_oref():
 
         if r.status_code == 200:
             return r.json().get("data", [])
+
     except:
         pass
 
@@ -60,6 +62,7 @@ def get_redalert():
 
         if r.status_code == 200:
             return r.json()
+
     except:
         pass
 
@@ -68,7 +71,7 @@ def get_redalert():
 
 # ===== לולאה =====
 
-async def alert_loop(app):
+def check_alerts():
     global last_alert
 
     while True:
@@ -93,7 +96,7 @@ async def alert_loop(app):
                     pass
 
             if found and last_alert != "alert":
-                await app.bot.send_message(
+                bot.send_message(
                     chat_id=CHAT_ID,
                     text="🚨 אזעקה בצור יצחק!\nהיכנס למרחב מוגן מיד!"
                 )
@@ -105,24 +108,27 @@ async def alert_loop(app):
         except Exception as e:
             print("ERROR:", e)
 
-        await asyncio.sleep(2)
+        time.sleep(2)
 
 
-# ===== MAIN =====
+# ===== הפעלה =====
 
-async def main():
-    app = ApplicationBuilder().token(TOKEN).build()
+def main():
+    updater = Updater(TOKEN, use_context=True)
 
-    app.add_handler(CommandHandler("status", status))
-    app.add_handler(CommandHandler("test", test))
+    dp = updater.dispatcher
+    dp.add_handler(CommandHandler("status", status))
+    dp.add_handler(CommandHandler("test", test))
 
     print("Bot started")
 
-    # מפעיל לולאה ברקע
-    asyncio.create_task(alert_loop(app))
+    # מריץ בדיקות ברקע
+    import threading
+    threading.Thread(target=check_alerts).start()
 
-    await app.run_polling()
+    updater.start_polling()
+    updater.idle()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
