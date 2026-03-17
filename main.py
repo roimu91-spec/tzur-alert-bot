@@ -12,12 +12,12 @@ CITY_NAME = "צור יצחק"
 last_alert_id = None
 
 
-# ✅ פקודת סטטוס
+# ✅ סטטוס
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ הבוט פעיל")
 
 
-# ✅ פקודת בדיקה לערוץ
+# ✅ בדיקה לערוץ
 async def test(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=CHAT_ID,
@@ -31,9 +31,12 @@ async def check_alerts(app):
     global last_alert_id
 
     headers = {
-        "User-Agent": "Mozilla/5.0",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "he-IL,he;q=0.9,en;q=0.8",
         "Referer": "https://www.oref.org.il/",
-        "X-Requested-With": "XMLHttpRequest"
+        "Origin": "https://www.oref.org.il",
+        "Connection": "keep-alive"
     }
 
     while True:
@@ -60,8 +63,9 @@ async def check_alerts(app):
 
                     print("Cities:", cities)
 
-                    # 🔍 בדיקה חכמה (גם אם השם לא מדויק)
                     for city in cities:
+
+                        # 🔍 זיהוי גם אם השם משתנה קצת
                         if "צור יצחק" in city:
 
                             if alert_id != last_alert_id:
@@ -81,7 +85,7 @@ async def check_alerts(app):
         await asyncio.sleep(2)
 
 
-# 🔧 הפעלת הבוט (יציב ל-Railway)
+# 🔧 הפעלה (מתוקן ל-Railway)
 def main():
 
     app = ApplicationBuilder().token(TOKEN).build()
