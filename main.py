@@ -42,7 +42,6 @@ def get_oref():
 
         if r.status_code == 200:
             return r.json().get("data", [])
-
     except:
         pass
 
@@ -61,16 +60,15 @@ def get_redalert():
 
         if r.status_code == 200:
             return r.json()
-
     except:
         pass
 
     return []
 
 
-# ===== בדיקה =====
+# ===== לולאה =====
 
-async def check_alerts(app):
+async def alert_loop(app):
     global last_alert
 
     while True:
@@ -110,15 +108,21 @@ async def check_alerts(app):
         await asyncio.sleep(2)
 
 
-# ===== הפעלה =====
+# ===== MAIN =====
 
-app = ApplicationBuilder().token(TOKEN).build()
+async def main():
+    app = ApplicationBuilder().token(TOKEN).build()
 
-app.add_handler(CommandHandler("status", status))
-app.add_handler(CommandHandler("test", test))
+    app.add_handler(CommandHandler("status", status))
+    app.add_handler(CommandHandler("test", test))
 
-app.job_queue.run_once(lambda ctx: asyncio.create_task(check_alerts(app)), 0)
+    print("Bot started")
 
-print("Bot started")
+    # מפעיל לולאה ברקע
+    asyncio.create_task(alert_loop(app))
 
-app.run_polling()
+    await app.run_polling()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
