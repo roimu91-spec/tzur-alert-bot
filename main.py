@@ -16,6 +16,7 @@ last_alert = None
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ הבוט פעיל")
 
+
 async def test(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=CHAT_ID,
@@ -88,11 +89,11 @@ async def check_alerts(app):
 
             found = False
 
-            # בדיקה בפיקוד העורף
+            # פיקוד העורף
             if isinstance(oref_data, list) and CITY_NAME in oref_data:
                 found = True
 
-            # בדיקה ב-RedAlert (עם הגנה מקריסה)
+            # RedAlert (מוגן מקריסה)
             if red_data:
                 try:
                     for item in red_data:
@@ -134,5 +135,9 @@ async def main():
     await app.run_polling()
 
 
+# ===== הפעלה (מתוקן ל-Railway) =====
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    import asyncio
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
