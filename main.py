@@ -42,7 +42,10 @@ def get_oref():
         if r.status_code == 200:
             data = r.json()
             return data.get("data", [])
-    except:
+        return []
+
+    except Exception as e:
+        print("OREF ERROR:", e)
         return []
 
 
@@ -61,9 +64,12 @@ def get_redalert():
         )
 
         if r.status_code == 200:
-            data = r.json()
-            return data
-    except:
+            return r.json()
+
+        return []
+
+    except Exception as e:
+        print("RED ERROR:", e)
         return []
 
 
@@ -83,16 +89,19 @@ async def check_alerts(app):
             found = False
 
             # בדיקה בפיקוד העורף
-            if CITY_NAME in oref_data:
+            if isinstance(oref_data, list) and CITY_NAME in oref_data:
                 found = True
 
-            # בדיקה ב-RedAlert
-            if isinstance(red_data, list):
-                for item in red_data:
-                    if CITY_NAME in str(item):
-                        found = True
+            # בדיקה ב-RedAlert (עם הגנה מקריסה)
+            if red_data:
+                try:
+                    for item in red_data:
+                        if CITY_NAME in str(item):
+                            found = True
+                except:
+                    pass
 
-            # שליחה
+            # שליחת אזעקה
             if found and last_alert != "alert":
                 await app.bot.send_message(
                     chat_id=CHAT_ID,
@@ -100,12 +109,12 @@ async def check_alerts(app):
                 )
                 last_alert = "alert"
 
-            # איפוס כשאין אזעקה
+            # איפוס
             if not found:
                 last_alert = None
 
         except Exception as e:
-            print("ERROR:", e)
+            print("MAIN ERROR:", e)
 
         await asyncio.sleep(2)
 
