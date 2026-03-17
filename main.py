@@ -1,68 +1,108 @@
-import os
-import requests
 import asyncio
+import requests
+import os
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 TOKEN = os.environ["TOKEN"]
 CHAT_ID = os.environ["CHAT_ID"]
-
 CITY_NAME = "צור יצחק"
 
 last_alert = None
 
 
-# סטטוס
+# ===== פקודות =====
+
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ הבוט פעיל")
 
-
-# בדיקה
 async def test(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=CHAT_ID,
-        text="🚨 בדיקה לערוץ צור יצחק"
+        text="🚨 בדיקת אזעקה (test)"
     )
 
 
-# 🚨 בדיקת אזעקות (RedAlert)
-async def check_alerts(app):
+# ===== מקור 1 - פיקוד העורף =====
 
+def get_oref():
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0",
+            "Referer": "https://www.oref.org.il/",
+            "X-Requested-With": "XMLHttpRequest"
+        }
+
+        r = requests.get(
+            "https://www.oref.org.il/WarningMessages/alert/alerts.json",
+            headers=headers,
+            timeout=5
+        )
+
+        if r.status_code == 200:
+            data = r.json()
+            return data.get("data", [])
+    except:
+        return []
+
+
+# ===== מקור 2 - RedAlert =====
+
+def get_redalert():
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
+
+        r = requests.get(
+            "https://api.redalert.me/alerts.json",
+            headers=headers,
+            timeout=5
+        )
+
+        if r.status_code == 200:
+            data = r.json()
+            return data
+    except:
+        return []
+
+
+# ===== בדיקה מרכזית =====
+
+async def check_alerts(app):
     global last_alert
 
     while True:
         try:
-            r = requests.get(
-                "https://api.tzevaadom.co.il/notifications",
-                timeout=5
-            )
+            oref_data = get_oref()
+            red_data = get_redalert()
 
-            if r.status_code == 200:
+            print("OREF:", oref_data)
+            print("RED:", red_data)
 
-                data = r.json()
-                print("DATA:", data)
+            found = False
 
-                if data:
+            # בדיקה בפיקוד העורף
+            if CITY_NAME in oref_data:
+                found = True
 
-                    alert_id = str(data)
+            # בדיקה ב-RedAlert
+            if isinstance(red_data, list):
+                for item in red_data:
+                    if CITY_NAME in str(item):
+                        found = True
 
-                    if alert_id != last_alert:
+            # שליחה
+            if found and last_alert != "alert":
+                await app.bot.send_message(
+                    chat_id=CHAT_ID,
+                    text="🚨 אזעקה בצור יצחק!\nהיכנס למרחב מוגן מיד!"
+                )
+                last_alert = "alert"
 
-                        cities = data[0].get("cities", [])
-
-                        print("Cities:", cities)
-
-                        for city in cities:
-                            if "צור יצחק" in city:
-
-                                print("🚨 ALERT DETECTED")
-
-                                await app.bot.send_message(
-                                    chat_id=CHAT_ID,
-                                    text="🚨 אזעקה בצור יצחק!\n\nהיכנסו מיד למרחב מוגן!"
-                                )
-
-                                last_alert = alert_id
+            # איפוס כשאין אזעקה
+            if not found:
+                last_alert = None
 
         except Exception as e:
             print("ERROR:", e)
@@ -70,22 +110,20 @@ async def check_alerts(app):
         await asyncio.sleep(2)
 
 
-def main():
+# ===== MAIN =====
 
+async def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("status", status))
     app.add_handler(CommandHandler("test", test))
 
-    async def start_tasks(app):
-        asyncio.create_task(check_alerts(app))
-
-    app.post_init = start_tasks
+    asyncio.create_task(check_alerts(app))
 
     print("Bot started")
 
-    app.run_polling()
+    await app.run_polling()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
