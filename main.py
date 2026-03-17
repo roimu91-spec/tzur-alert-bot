@@ -9,15 +9,15 @@ CHAT_ID = os.environ["CHAT_ID"]
 
 CITY_NAME = "צור יצחק"
 
-last_alert_id = None
+last_alert = None
 
 
-# ✅ סטטוס
+# סטטוס
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ הבוט פעיל")
 
 
-# ✅ בדיקה לערוץ
+# בדיקה
 async def test(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=CHAT_ID,
@@ -25,50 +25,35 @@ async def test(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# 🚨 בדיקת אזעקות
+# 🚨 בדיקת אזעקות (RedAlert)
 async def check_alerts(app):
 
-    global last_alert_id
-
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        "Accept": "application/json, text/plain, */*",
-        "Accept-Language": "he-IL,he;q=0.9,en;q=0.8",
-        "Referer": "https://www.oref.org.il/",
-        "Origin": "https://www.oref.org.il",
-        "Connection": "keep-alive"
-    }
+    global last_alert
 
     while True:
-
         try:
-
             r = requests.get(
-                "https://www.oref.org.il/WarningMessages/alert/alerts.json",
-                headers=headers,
+                "https://api.tzevaadom.co.il/notifications",
                 timeout=5
             )
-
-            print("Status:", r.status_code)
 
             if r.status_code == 200:
 
                 data = r.json()
                 print("DATA:", data)
 
-                if data and "data" in data and data["data"]:
+                if data:
 
-                    cities = data["data"]
-                    alert_id = data.get("id")
+                    alert_id = str(data)
 
-                    print("Cities:", cities)
+                    if alert_id != last_alert:
 
-                    for city in cities:
+                        cities = data[0].get("cities", [])
 
-                        # 🔍 זיהוי גם אם השם משתנה קצת
-                        if "צור יצחק" in city:
+                        print("Cities:", cities)
 
-                            if alert_id != last_alert_id:
+                        for city in cities:
+                            if "צור יצחק" in city:
 
                                 print("🚨 ALERT DETECTED")
 
@@ -77,7 +62,7 @@ async def check_alerts(app):
                                     text="🚨 אזעקה בצור יצחק!\n\nהיכנסו מיד למרחב מוגן!"
                                 )
 
-                                last_alert_id = alert_id
+                                last_alert = alert_id
 
         except Exception as e:
             print("ERROR:", e)
@@ -85,7 +70,6 @@ async def check_alerts(app):
         await asyncio.sleep(2)
 
 
-# 🔧 הפעלה (מתוקן ל-Railway)
 def main():
 
     app = ApplicationBuilder().token(TOKEN).build()
