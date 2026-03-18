@@ -1,6 +1,5 @@
 import requests
 import os
-import time
 from telegram import Bot
 from telegram.ext import Updater, CommandHandler
 
@@ -44,8 +43,8 @@ def get_oref():
         if r.status_code == 200:
             return r.json().get("data", [])
 
-    except:
-        pass
+    except Exception as e:
+        print("OREF ERROR:", e)
 
     return []
 
@@ -63,52 +62,54 @@ def get_redalert():
         if r.status_code == 200:
             return r.json()
 
-    except:
-        pass
+    except Exception as e:
+        print("RED ERROR:", e)
 
     return []
 
 
-# ===== לולאה =====
+# ===== בדיקה אחת =====
 
-def check_alerts():
+def check_alerts_once():
     global last_alert
 
-    while True:
-        try:
-            oref_data = get_oref()
-            red_data = get_redalert()
+    try:
+        oref_data = get_oref()
+        red_data = get_redalert()
 
-            print("OREF:", oref_data)
-            print("RED:", red_data)
+        print("OREF:", oref_data)
+        print("RED:", red_data)
 
-            found = False
+        found = False
 
-            if CITY_NAME in oref_data:
+        # בדיקה גמישה (לא התאמה מדויקת)
+        for item in oref_data:
+            if CITY_NAME in str(item):
                 found = True
 
-            if red_data:
-                try:
-                    for item in red_data:
-                        if CITY_NAME in str(item):
-                            found = True
-                except:
-                    pass
+        if red_data:
+            for item in red_data:
+                if CITY_NAME in str(item):
+                    found = True
 
-            if found and last_alert != "alert":
-                bot.send_message(
-                    chat_id=CHAT_ID,
-                    text="🚨 אזעקה בצור יצחק!\nהיכנס למרחב מוגן מיד!"
-                )
-                last_alert = "alert"
+        if found and last_alert != "alert":
+            bot.send_message(
+                chat_id=CHAT_ID,
+                text="🚨 אזעקה בצור יצחק!\nהיכנס למרחב מוגן מיד!"
+            )
+            last_alert = "alert"
 
-            if not found:
-                last_alert = None
+        if not found:
+            last_alert = None
 
-        except Exception as e:
-            print("ERROR:", e)
+    except Exception as e:
+        print("CHECK ERROR:", e)
 
-        time.sleep(2)
+
+# ===== חיבור ל-job queue =====
+
+def run_check(context):
+    check_alerts_once()
 
 
 # ===== הפעלה =====
@@ -122,9 +123,9 @@ def main():
 
     print("Bot started")
 
-    # מריץ בדיקות ברקע
-    import threading
-    threading.Thread(target=check_alerts).start()
+    # הרצה כל 2 שניות (יציב!)
+    job_queue = updater.job_queue
+    job_queue.run_repeating(run_check, interval=2, first=0)
 
     updater.start_polling()
     updater.idle()
