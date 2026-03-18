@@ -1,6 +1,7 @@
 import requests
 import asyncio
 from telegram import Bot
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 TOKEN = "8457356709:AAFgmuKCiJHk_IrNOMOUdLgVDi95wDfrG08"
 CHAT_ID = "-1003864517348"
@@ -8,10 +9,6 @@ CHAT_ID = "-1003864517348"
 bot = Bot(token=TOKEN)
 
 last_alert = None
-
-# ===============================
-# רק צור יצחק
-# ===============================
 TARGET_AREA = "צור יצחק"
 
 # ===============================
@@ -40,6 +37,7 @@ def get_oref():
         print("OREF EXCEPTION:", e)
         return None
 
+
 # ===============================
 # Red Alert (גיבוי)
 # ===============================
@@ -58,6 +56,17 @@ def get_red():
         print("RED EXCEPTION:", e)
         return None
 
+
+# ===============================
+# פקודות טלגרם
+# ===============================
+async def test(update, context):
+    await update.message.reply_text("✅ הבוט עובד!")
+
+async def status(update, context):
+    await update.message.reply_text("🤖 הבוט פעיל ומאזין לאזעקות")
+
+
 # ===============================
 # בדיקה ושליחה
 # ===============================
@@ -74,25 +83,26 @@ async def check_alerts():
             # ===== OREF =====
             if isinstance(oref, dict) and "data" in oref and oref["data"]:
                 cities = oref["data"]
-                # 🟢 רק צור יצחק
+
                 if TARGET_AREA in cities:
-                    alert_data = f"🚨 אזעקה בצור יצחק!"
+                    alert_data = "🚨 אזעקה בצור יצחק!"
 
             # ===== RED =====
             elif isinstance(red, list) and len(red) > 0:
-                # בדיקה אם יש אזעקה בצור יצחק גם בגיבוי
                 for alert in red:
                     if TARGET_AREA in alert.get("city", ""):
-                        alert_data = f"🚨 אזעקה בצור יצחק (גיבוי)"
+                        alert_data = "🚨 אזעקה בצור יצחק (גיבוי)"
                         break
 
             # ===== שליחה =====
             if alert_data and alert_data != last_alert:
                 print("🚨 שולח לטלגרם")
+
                 await bot.send_message(
                     chat_id=CHAT_ID,
                     text=alert_data
                 )
+
                 last_alert = alert_data
 
         except Exception as e:
@@ -100,12 +110,24 @@ async def check_alerts():
 
         await asyncio.sleep(2)
 
+
 # ===============================
 # הרצה
 # ===============================
 async def main():
     print("Bot started 🚀")
-    await check_alerts()
+
+    app = ApplicationBuilder().token(TOKEN).build()
+
+    # פקודות
+    app.add_handler(CommandHandler("test", test))
+    app.add_handler(CommandHandler("status", status))
+
+    # הרצת בדיקות אזעקה ברקע
+    asyncio.create_task(check_alerts())
+
+    await app.run_polling()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
