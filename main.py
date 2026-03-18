@@ -9,6 +9,10 @@ bot = Bot(token=TOKEN)
 
 last_alert = None
 
+# ===============================
+# רק צור יצחק
+# ===============================
+TARGET_AREA = "צור יצחק"
 
 # ===============================
 # OREF (פיקוד העורף)
@@ -36,7 +40,6 @@ def get_oref():
         print("OREF EXCEPTION:", e)
         return None
 
-
 # ===============================
 # Red Alert (גיבוי)
 # ===============================
@@ -55,7 +58,6 @@ def get_red():
         print("RED EXCEPTION:", e)
         return None
 
-
 # ===============================
 # בדיקה ושליחה
 # ===============================
@@ -67,29 +69,30 @@ async def check_alerts():
             oref = get_oref()
             red = get_red()
 
-            print("OREF:", oref)
-            print("RED:", red)
-
             alert_data = None
 
             # ===== OREF =====
             if isinstance(oref, dict) and "data" in oref and oref["data"]:
-                cities = ", ".join(oref["data"])
-                alert_data = f"🚨 אזעקה!\nאזורים: {cities}"
+                cities = oref["data"]
+                # 🟢 רק צור יצחק
+                if TARGET_AREA in cities:
+                    alert_data = f"🚨 אזעקה בצור יצחק!"
 
             # ===== RED =====
             elif isinstance(red, list) and len(red) > 0:
-                alert_data = f"🚨 אזעקה (גיבוי)\n{red}"
+                # בדיקה אם יש אזעקה בצור יצחק גם בגיבוי
+                for alert in red:
+                    if TARGET_AREA in alert.get("city", ""):
+                        alert_data = f"🚨 אזעקה בצור יצחק (גיבוי)"
+                        break
 
             # ===== שליחה =====
             if alert_data and alert_data != last_alert:
                 print("🚨 שולח לטלגרם")
-
                 await bot.send_message(
                     chat_id=CHAT_ID,
                     text=alert_data
                 )
-
                 last_alert = alert_data
 
         except Exception as e:
@@ -97,14 +100,12 @@ async def check_alerts():
 
         await asyncio.sleep(2)
 
-
 # ===============================
 # הרצה
 # ===============================
 async def main():
     print("Bot started 🚀")
     await check_alerts()
-
 
 if __name__ == "__main__":
     asyncio.run(main())
