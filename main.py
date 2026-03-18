@@ -1,135 +1,110 @@
 import requests
-import os
+import asyncio
 from telegram import Bot
-from telegram.ext import Updater, CommandHandler
 
-TOKEN = os.environ["TOKEN"]
-CHAT_ID = os.environ["CHAT_ID"]
-CITY_NAME = "צור יצחק"
+TOKEN = "8457356709:AAFgmuKCiJHk_IrNOMOUdLgVDi95wDfrG08"
+CHAT_ID = "-1003864517348"
 
 bot = Bot(token=TOKEN)
+
 last_alert = None
 
 
-# ===== פקודות =====
-
-def status(update, context):
-    update.message.reply_text("✅ הבוט פעיל")
-
-
-def test(update, context):
-    bot.send_message(
-        chat_id=CHAT_ID,
-        text="🚨 בדיקת אזעקה (test)"
-    )
-
-
-# ===== מקורות =====
-
+# ===============================
+# OREF (פיקוד העורף)
+# ===============================
 def get_oref():
     try:
+        url = "https://www.oref.org.il/WarningMessages/alert/alerts.json"
+
         headers = {
             "User-Agent": "Mozilla/5.0",
             "Referer": "https://www.oref.org.il/",
+            "Accept": "application/json, text/plain, */*",
             "X-Requested-With": "XMLHttpRequest"
         }
 
-        r = requests.get(
-            "https://www.oref.org.il/WarningMessages/alert/alerts.json",
-            headers=headers,
-            timeout=5
-        )
+        res = requests.get(url, headers=headers, timeout=5)
 
-        if r.status_code == 200:
-            return r.json().get("data", [])
+        if res.status_code == 200:
+            return res.json()
+        else:
+            print("OREF ERROR:", res.status_code)
+            return None
 
     except Exception as e:
-        print("OREF ERROR:", e)
+        print("OREF EXCEPTION:", e)
+        return None
 
-    return []
 
-
-def get_redalert():
+# ===============================
+# Red Alert (גיבוי)
+# ===============================
+def get_red():
     try:
-        headers = {"User-Agent": "Mozilla/5.0"}
+        url = "https://api.tzevaadom.co.il/notifications"
+        res = requests.get(url, timeout=5)
 
-        r = requests.get(
-            "https://api.redalert.me/alerts.json",
-            headers=headers,
-            timeout=5
-        )
-
-        if r.status_code == 200:
-            return r.json()
+        if res.status_code == 200:
+            return res.json()
+        else:
+            print("RED ERROR:", res.status_code)
+            return None
 
     except Exception as e:
-        print("RED ERROR:", e)
+        print("RED EXCEPTION:", e)
+        return None
 
-    return []
 
-
-# ===== בדיקה אחת =====
-
-def check_alerts_once():
+# ===============================
+# בדיקה ושליחה
+# ===============================
+async def check_alerts():
     global last_alert
 
-    try:
-        oref_data = get_oref()
-        red_data = get_redalert()
+    while True:
+        try:
+            oref = get_oref()
+            red = get_red()
 
-        print("OREF:", oref_data)
-        print("RED:", red_data)
+            print("OREF:", oref)
+            print("RED:", red)
 
-        found = False
+            alert_data = None
 
-        # בדיקה גמישה (לא התאמה מדויקת)
-        for item in oref_data:
-            if CITY_NAME in str(item):
-                found = True
+            # ===== OREF =====
+            if isinstance(oref, dict) and "data" in oref and oref["data"]:
+                cities = ", ".join(oref["data"])
+                alert_data = f"🚨 אזעקה!\nאזורים: {cities}"
 
-        if red_data:
-            for item in red_data:
-                if CITY_NAME in str(item):
-                    found = True
+            # ===== RED =====
+            elif isinstance(red, list) and len(red) > 0:
+                alert_data = f"🚨 אזעקה (גיבוי)\n{red}"
 
-        if found and last_alert != "alert":
-            bot.send_message(
-                chat_id=CHAT_ID,
-                text="🚨 אזעקה בצור יצחק!\nהיכנס למרחב מוגן מיד!"
-            )
-            last_alert = "alert"
+            # ===== שליחה =====
+            if alert_data and alert_data != last_alert:
+                print("🚨 שולח לטלגרם")
 
-        if not found:
-            last_alert = None
+                await bot.send_message(
+                    chat_id=CHAT_ID,
+                    text=alert_data
+                )
 
-    except Exception as e:
-        print("CHECK ERROR:", e)
+                last_alert = alert_data
 
+        except Exception as e:
+            print("MAIN ERROR:", e)
 
-# ===== חיבור ל-job queue =====
-
-def run_check(context):
-    check_alerts_once()
+        await asyncio.sleep(2)
 
 
-# ===== הפעלה =====
-
-def main():
-    updater = Updater(TOKEN, use_context=True)
-
-    dp = updater.dispatcher
-    dp.add_handler(CommandHandler("status", status))
-    dp.add_handler(CommandHandler("test", test))
-
-    print("Bot started")
-
-    # הרצה כל 2 שניות (יציב!)
-    job_queue = updater.job_queue
-    job_queue.run_repeating(run_check, interval=2, first=0)
-
-    updater.start_polling()
-    updater.idle()
+# ===============================
+# הרצה
+# ===============================
+async def main():
+    print("Bot started 🚀")
+    await check_alerts()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
