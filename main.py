@@ -80,22 +80,23 @@ async def check_alerts(app):
 # ===============================
 # MAIN
 # ===============================
-async def main():
-    app = ApplicationBuilder().token(TOKEN).build()
+async def post_init(app):
+    # מריץ את הלולאה ברקע בצורה תקינה
+    asyncio.create_task(check_alerts(app))
+
+
+def main():
+    app = ApplicationBuilder().token(TOKEN).post_init(post_init).build()
 
     app.add_handler(CommandHandler("test", test))
     app.add_handler(CommandHandler("status", status))
 
-    # מפעיל את הלולאה ברקע (בלי לקרוס)
-    asyncio.create_task(check_alerts(app))
-
     print("Bot started 🚀")
-    await app.run_polling()
+    app.run_polling()
 
 
 # ===============================
-# הרצה (מתוקן ל-Railway)
+# הרצה
 # ===============================
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    main()
