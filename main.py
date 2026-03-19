@@ -4,7 +4,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 TOKEN = "8457356709:AAFgmuKCiJHk_IrNOMOUdLgVDi95wDfrG08"
-CHAT_ID = "-1003864517348"
+CHAT_ID = -1003864517348  # הקבוצה שלך
 
 MY_AREAS = ["צור יצחק"]
 
@@ -32,7 +32,10 @@ def get_red():
 # פקודות
 # ===============================
 async def test(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ הבוט עובד!")
+    await context.bot.send_message(
+        chat_id=CHAT_ID,
+        text="✅ הבוט עובד בקבוצה!"
+    )
 
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -67,7 +70,7 @@ async def check_alerts(app):
                 msg = f"🚨 אזעקה בצור יצחק!\n{', '.join(matched)}"
 
                 await app.bot.send_message(chat_id=CHAT_ID, text=msg)
-                print("🚨 נשלח")
+                print("🚨 נשלח לקבוצה")
 
                 sent_ids.add(alert_id)
 
@@ -81,7 +84,6 @@ async def check_alerts(app):
 # MAIN
 # ===============================
 async def post_init(app):
-    # מריץ את הלולאה ברקע בצורה תקינה
     asyncio.create_task(check_alerts(app))
 
 
