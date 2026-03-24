@@ -80,7 +80,7 @@ def is_relevant(cities):
 # לולאת אזעקות
 # ===============================
 async def check_alerts(app):
-    await asyncio.sleep(5)  # נותן לבוט לעלות קודם
+    await asyncio.sleep(5)  # נותן לבוט לעלות
     while True:
         try:
             alerts = get_oref()
@@ -132,22 +132,30 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ===============================
+# INIT (פה הפתרון!)
+# ===============================
+async def post_init(app):
+    asyncio.create_task(check_alerts(app))
+
+
+# ===============================
 # MAIN
 # ===============================
 def main():
-    app = ApplicationBuilder().token(TOKEN).build()
+    app = (
+        ApplicationBuilder()
+        .token(TOKEN)
+        .post_init(post_init)  # 🔥 חשוב
+        .build()
+    )
 
-    # handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("test", test))
     app.add_handler(MessageHandler(filters.TEXT, echo))
 
-    # לולאת אזעקות (בלי post_init כדי למנוע כפילות)
-    app.create_task(check_alerts(app))
-
     print("Bot started 🚀")
 
-    app.run_polling(close_loop=False)
+    app.run_polling()
 
 
 if __name__ == "__main__":
