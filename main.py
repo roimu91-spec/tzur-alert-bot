@@ -1,60 +1,60 @@
 import requests
 import asyncio
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram import Bot
 
 TOKEN = "8457356709:AAGtwHiQHvYQww9KPIQwdLpddsIYIJ-wAkc"
 CHAT_ID = "-1003864517348"
 
-TARGET_CITIES = ["צור יצחק", "כפר סבא"]
+bot = Bot(token=TOKEN)
 
 last_ids = set()
 
 def get_alerts():
     try:
-        res = requests.get("https://api.tzevaadom.co.il/notifications", timeout=5)
+        url = "https://api.tzevaadom.co.il/notifications"
+        res = requests.get(url, timeout=5)
         if res.status_code == 200:
             return res.json()
         return []
     except:
         return []
 
-def filter_cities(cities):
-    return [c for c in cities if any(t in c for t in TARGET_CITIES)]
+async def main():
+    print("Bot started 🚀")
 
-async def check(app):
-    global last_ids
     while True:
         try:
-            alerts = get_alerts()
-            for a in alerts:
-                aid = a.get("notificationId")
-                if not aid or aid in last_ids:
-                    continue
-                cities = filter_cities(a.get("cities", []))
-                if cities:
-                    await app.bot.send_message(chat_id=CHAT_ID, text="🚨 אזעקה!\n" + ", ".join(cities))
-                    last_ids.add(aid)
-                    if len(last_ids) > 50:
-                        last_ids = set(list(last_ids)[-20:])
-        except:
-            pass
-        await asyncio.sleep(2)
+            data = get_alerts()
 
-async def test(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.send_message(chat_id=CHAT_ID, text="✅ עובד")
+            if data:
+                for alert in data:
+                    alert_id = alert.get("notificationId")
 
-async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🤖 פעיל")
+                    if alert_id in last_ids:
+                        continue
 
-async def start(app):
-    asyncio.create_task(check(app))
+                    cities = alert.get("cities", [])
 
-def main():
-    app = ApplicationBuilder().token(TOKEN).post_init(start).build()
-    app.add_handler(CommandHandler("test", test))
-    app.add_handler(CommandHandler("status", status))
-    app.run_polling()
+                    filtered = [
+                        city for city in cities
+                        if "צור יצחק" in city or "כפר סבא" in city
+                    ]
+
+                    if filtered:
+                        text = "🚨 אזעקה!\n" + ", ".join(filtered)
+
+                        await bot.send_message(
+                            chat_id=CHAT_ID,
+                            text=text
+                        )
+
+                        last_ids.add(alert_id)
+
+            await asyncio.sleep(2)
+
+        except Exception as e:
+            print("ERROR:", e)
+            await asyncio.sleep(5)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
