@@ -1,133 +1,116 @@
 import requests
 import asyncio
+import os
 from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    filters,
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-TOKEN = "8457356709:AAEZz6CObKzeLsHjKbCHkYGumJNlR8tX42c"
-CHAT_ID = -1003864517348
+TOKEN = os.getenv("TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 
-AREAS = [
-    "צור יצחק",
-    "דרום השרון",
-    "יישובי דרום השרון",
-    "השרון"
-]
+TARGET_CITIES = ["צור יצחק", "כפר סבא"]
 
-sent_ids = set()
+last_alert_id = None
 
 
-def get_oref():
-    try:
-        url = "https://www.oref.org.il/WarningMessages/alert/alerts.json"
-        headers = {
-            "User-Agent": "Mozilla/5.0",
-            "Referer": "https://www.oref.org.il/"
-        }
-        res = requests.get(url, headers=headers, timeout=5)
-        if res.status_code == 200:
-            data = res.json()
-            if isinstance(data, list):
-                return data
-        return []
-    except Exception as e:
-        print("OREF ERROR:", e)
-        return []
-
-
-def get_red():
+# ===============================
+# קבלת נתונים (Red Alert API)
+# ===============================
+def get_alerts():
     try:
         url = "https://api.tzevaadom.co.il/notifications"
         res = requests.get(url, timeout=5)
+
         if res.status_code == 200:
             return res.json()
-        return []
+        else:
+            print("ERROR:", res.status_code)
+            return []
+
     except Exception as e:
-        print("RED ERROR:", e)
+        print("EXCEPTION:", e)
         return []
 
 
-def is_relevant(cities):
+# ===============================
+# סינון ערים
+# ===============================
+def filter_cities(cities):
+    result = []
     for city in cities:
-        for area in AREAS:
-            if area in city:
-                return True
-    return False
+        for target in TARGET_CITIES:
+            if target in city:
+                result.append(city)
+    return result
 
 
+# ===============================
+# בדיקה ושליחה
+# ===============================
 async def check_alerts(app):
-    await asyncio.sleep(5)
+    global last_alert_id
+
     while True:
         try:
-            alerts = get_oref()
-            if not alerts:
-                alerts = get_red()
+            alerts = get_alerts()
+
             print("DATA:", alerts)
-            for alert in alerts:
-                alert_id = alert.get("notificationId") if isinstance(alert, dict) else str(alert)
-                if alert_id in sent_ids:
-                    continue
-                cities = alert.get("cities", []) if isinstance(alert, dict) else []
-                if not is_relevant(cities):
-                    continue
-                msg = f"🚨 אזעקה!\n{', '.join(cities)}"
-                await app.bot.send_message(chat_id=CHAT_ID, text=msg)
-                print("🚨 נשלח!")
-                sent_ids.add(alert_id)
+
+            if alerts:
+                for alert in alerts:
+
+                    alert_id = alert.get("notificationId")
+
+                    # לא לשלוח שוב אותו דבר
+                    if alert_id == last_alert_id:
+                        continue
+
+                    cities = alert.get("cities", [])
+                    filtered = filter_cities(cities)
+
+                    if filtered:
+                        message = "🚨 אזעקה!\n" + ", ".join(filtered)
+
+                        print("🚨 שולח:", message)
+
+                        await app.bot.send_message(
+                            chat_id=CHAT_ID,
+                            text=message
+                        )
+
+                        last_alert_id = alert_id
+
         except Exception as e:
             print("MAIN ERROR:", e)
+
         await asyncio.sleep(2)
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("הבוט עובד ✅")
-
-
-async def getid(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-    print("CHAT ID:", chat_id)
-    await update.message.reply_text(f"CHAT ID: {chat_id}")
-
-
+# ===============================
+# פקודות
+# ===============================
 async def test(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        await context.bot.send_message(chat_id=CHAT_ID, text="🚨 בדיקה מהבוט!")
-        await update.message.reply_text("שלחתי לערוץ ✅")
-    except Exception as e:
-        print("SEND ERROR:", e)
-        await update.message.reply_text(f"שגיאה: {e}")
+    await update.message.reply_text("✅ הבוט עובד")
+
+async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🤖 הבוט פעיל ומנטר אזעקות")
 
 
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("קיבלתי 👍")
+# ===============================
+# MAIN
+# ===============================
+async def main():
+    app = ApplicationBuilder().token(TOKEN).build()
 
-
-async def post_init(app):
-    asyncio.create_task(check_alerts(app))
-
-
-def main():
-    app = (
-        ApplicationBuilder()
-        .token(TOKEN)
-        .post_init(post_init)
-        .build()
-    )
-
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("getid", getid))
     app.add_handler(CommandHandler("test", test))
-    app.add_handler(MessageHandler(filters.TEXT, echo))
+    app.add_handler(CommandHandler("status", status))
 
     print("Bot started 🚀")
 
-    app.run_polling()
+    asyncio.create_task(check_alerts(app))
+
+    await app.run_polling()
 
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())
