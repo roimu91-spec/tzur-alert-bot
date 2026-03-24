@@ -1,8 +1,9 @@
 import requests
 import asyncio
-from telegram.ext import ApplicationBuilder
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-TOKEN = "8457356709:AAEZz6CObKzeLsHjKbCHkYGumJNlR8tX42c"
+TOKEN = "8457356709:AAEZz6CObKzeLsHjKbCHkYGumJNlR8tX42c״
 CHAT_ID = -1003864517348
 
 AREAS = [
@@ -16,7 +17,7 @@ sent_ids = set()
 
 
 # ===============================
-# מקור 1 - פיקוד העורף (הכי אמין)
+# פיקוד העורף
 # ===============================
 def get_oref():
     try:
@@ -30,8 +31,6 @@ def get_oref():
 
         if res.status_code == 200:
             data = res.json()
-
-            # אם אין אזעקות זה מחזיר []
             if isinstance(data, list):
                 return data
 
@@ -43,7 +42,7 @@ def get_oref():
 
 
 # ===============================
-# מקור 2 - גיבוי (כמו צופר)
+# גיבוי
 # ===============================
 def get_red():
     try:
@@ -72,15 +71,13 @@ def is_relevant(cities):
 
 
 # ===============================
-# לולאה ראשית
+# לולאת בדיקה
 # ===============================
 async def check_alerts(app):
     while True:
         try:
-            # קודם OREF (מהיר ואמין)
             alerts = get_oref()
 
-            # אם ריק → נסה RED
             if not alerts:
                 alerts = get_red()
 
@@ -97,7 +94,7 @@ async def check_alerts(app):
                 if not is_relevant(cities):
                     continue
 
-                msg = f"🚨 אזעקה בצור יצחק!\n{', '.join(cities)}"
+                msg = f"🚨 אזעקה!\n{', '.join(cities)}"
 
                 await app.bot.send_message(
                     chat_id=CHAT_ID,
@@ -114,14 +111,29 @@ async def check_alerts(app):
 
 
 # ===============================
-# MAIN
+# START COMMAND
+# ===============================
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("הבוט עובד ✅")
+
+
+# ===============================
+# INIT
 # ===============================
 async def post_init(app):
     asyncio.create_task(check_alerts(app))
 
 
 def main():
-    app = ApplicationBuilder().token(TOKEN).post_init(post_init).build()
+    app = (
+        ApplicationBuilder()
+        .token(TOKEN)
+        .post_init(post_init)
+        .build()
+    )
+
+    # 🔥 חשוב מאוד
+    app.add_handler(CommandHandler("start", start))
 
     print("Bot started 🚀")
     app.run_polling()
