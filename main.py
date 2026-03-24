@@ -2,7 +2,7 @@ import requests
 import asyncio
 from telegram.ext import ApplicationBuilder
 
-TOKEN = "8457356709:AAFgmuKCiJHk_IrNOMOUdLgVDi95wDfrG08"
+TOKEN = "8457356709:AAEZz6CObKzeLsHjKbCHkYGumJNlR8tX42c"
 CHAT_ID = -1003864517348
 
 AREAS = [
