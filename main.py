@@ -1,11 +1,15 @@
 import requests
 import asyncio
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
+)
 
-# 🔴 תדביק כאן טוקן חדש מבוטפאדר
 TOKEN = "8457356709:AAEZz6CObKzeLsHjKbCHkYGumJNlR8tX42c"
-
 CHAT_ID = -1003864517348
 
 AREAS = [
@@ -73,9 +77,10 @@ def is_relevant(cities):
 
 
 # ===============================
-# לולאת בדיקה
+# לולאת אזעקות
 # ===============================
 async def check_alerts(app):
+    await asyncio.sleep(5)  # נותן לבוט לעלות קודם
     while True:
         try:
             alerts = get_oref()
@@ -98,10 +103,7 @@ async def check_alerts(app):
 
                 msg = f"🚨 אזעקה!\n{', '.join(cities)}"
 
-                await app.bot.send_message(
-                    chat_id=CHAT_ID,
-                    text=msg
-                )
+                await app.bot.send_message(chat_id=CHAT_ID, text=msg)
 
                 print("🚨 נשלח!")
                 sent_ids.add(alert_id)
@@ -113,31 +115,39 @@ async def check_alerts(app):
 
 
 # ===============================
-# START
+# פקודות
 # ===============================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("📩 קיבלתי /start")
     await update.message.reply_text("הבוט עובד ✅")
 
 
-# ===============================
-# INIT
-# ===============================
-async def post_init(app):
-    asyncio.create_task(check_alerts(app))
+async def test(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🚨 בדיקה תקינה!")
 
 
+async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("📩 הודעה התקבלה")
+    await update.message.reply_text("קיבלתי 👍")
+
+
+# ===============================
+# MAIN
+# ===============================
 def main():
-    app = (
-        ApplicationBuilder()
-        .token(TOKEN)
-        .post_init(post_init)
-        .build()
-    )
+    app = ApplicationBuilder().token(TOKEN).build()
 
+    # handlers
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("test", test))
+    app.add_handler(MessageHandler(filters.TEXT, echo))
+
+    # לולאת אזעקות (בלי post_init כדי למנוע כפילות)
+    app.create_task(check_alerts(app))
 
     print("Bot started 🚀")
-    app.run_polling()
+
+    app.run_polling(close_loop=False)
 
 
 if __name__ == "__main__":
