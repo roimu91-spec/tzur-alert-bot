@@ -3,7 +3,9 @@ import asyncio
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-TOKEN = "8457356709:AAEZz6CObKzeLsHjKbCHkYGumJNlR8tX42c״
+# 🔴 תדביק כאן טוקן חדש מבוטפאדר
+TOKEN = "8457356709:AAEZz6CObKzeLsHjKbCHkYGumJNlR8tX42c"
+
 CHAT_ID = -1003864517348
 
 AREAS = [
@@ -84,7 +86,7 @@ async def check_alerts(app):
             print("DATA:", alerts)
 
             for alert in alerts:
-                alert_id = alert.get("notificationId") or str(alert)
+                alert_id = alert.get("notificationId") if isinstance(alert, dict) else str(alert)
 
                 if alert_id in sent_ids:
                     continue
@@ -111,7 +113,7 @@ async def check_alerts(app):
 
 
 # ===============================
-# START COMMAND
+# START
 # ===============================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("הבוט עובד ✅")
@@ -132,7 +134,6 @@ def main():
         .build()
     )
 
-    # 🔥 חשוב מאוד
     app.add_handler(CommandHandler("start", start))
 
     print("Bot started 🚀")
