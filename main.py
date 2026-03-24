@@ -3,7 +3,7 @@ import asyncio
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-TOKEN = "8457356709:AAEZz6C0bKzeLsHjKbCHkYGumJNlR8tX42c"
+TOKEN = "8457356709:AAGtwHiQHvYQww9KPIQwdLpddsIYIJ-wAkc"
 CHAT_ID = "-1003864517348"
 
 TARGET_CITIES = ["צור יצחק", "כפר סבא"]
