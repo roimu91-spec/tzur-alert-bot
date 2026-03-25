@@ -9,6 +9,8 @@ bot = Bot(token=TOKEN)
 
 last_ids = set()
 
+TARGET_CITIES = ["צור יצחק", "כפר סבא", "צור יגאל", "כוכב יאיר", "טייבה", "טירה"]
+
 def get_alerts():
     try:
         url = "https://api.tzevaadom.co.il/notifications"
@@ -37,7 +39,7 @@ async def main():
 
                     filtered = [
                         city for city in cities
-                        if "צור יצחק" in city or "כפר סבא" in city
+                        if any(target in city for target in TARGET_CITIES)
                     ]
 
                     if filtered:
