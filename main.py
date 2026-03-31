@@ -9,7 +9,7 @@ bot = Bot(token=TOKEN)
 
 last_ids = set()
 
-TARGET_CITIES = ["צור יצחק", "כפר סבא", "צור יגאל", "כוכב יאיר", "טייבה", "טירה"]
+TARGET_CITIES = ["צור יצחק", "כפר סבא", "צור יגאל", "כוכב יאיר", "טייבה", "טירה", "אייל"]
 
 def get_alerts():
     try:
