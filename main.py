@@ -39,7 +39,7 @@ async def main():
 
                     filtered = [
                         city for city in cities
-                        if any(target in city for target in TARGET_CITIES)
+                        if any(city == target or city.startswith(target + " ") for target in TARGET_CITIES)
                     ]
 
                     if filtered:
