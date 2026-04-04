@@ -43,11 +43,17 @@ async def main():
                     ]
 
                     if filtered:
-                        text = "🚨 אזעקה!\n" + ", ".join(filtered)
+                        highlighted = [
+                            f"*{city}*" if city == "צור יצחק" else city
+                            for city in filtered
+                        ]
+
+                        text = "🚨 אזעקה!\n" + ", ".join(highlighted)
 
                         await bot.send_message(
                             chat_id=CHAT_ID,
-                            text=text
+                            text=text,
+                            parse_mode="Markdown"
                         )
 
                         last_ids.add(alert_id)
